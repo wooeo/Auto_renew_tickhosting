@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-# 从环境变量获取cookie值
+# 从环境变量获取cookie
 SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
 
 def setup_driver():
