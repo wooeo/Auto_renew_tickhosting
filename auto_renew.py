@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-# 从环境变量获取cookie值
+# 从环境变量获取cookie
 SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
 
 def setup_driver():
@@ -59,7 +59,7 @@ def wait_and_find_element(driver, by, value, timeout=20, description=""):
         print(f"Failed to find element: {description}")
         print(f"Error: {str(e)}")
         print(f"Current URL: {driver.current_url}")
-        print(f"Page source: {driver.page_source[:500]}...")
+        print(f"Page source: {driver.page_source[:1000]}...")
         driver.save_screenshot(f'debug_{description.lower().replace(" ", "_")}.png')
         raise
 
@@ -80,15 +80,71 @@ def main():
         
         print("Refreshing page after adding cookies...")
         driver.refresh()
+        time.sleep(10)
+        
+        print("Taking screenshot before looking for server link...")
+        driver.save_screenshot('debug_before_server_link.png')
+        
+        print("Looking for server link...")
+        # 尝试多个选择器
+        selectors = [
+            ("xpath", "//a[@href='/' and contains(@class, 'nav_link')]"),
+            ("xpath", "//a[contains(@class, 'nav_link') and .//i[contains(@class, 'bx-server')]]"),
+            ("xpath", "//a[.//span[contains(text(), 'Servers')]]"),
+            ("css", "a.nav_link[href='/']")
+        ]
+        
+        server_link = None
+        for selector_type, selector in selectors:
+            try:
+                server_link = wait_and_find_element(
+                    driver,
+                    By.CSS_SELECTOR if selector_type == "css" else By.XPATH,
+                    selector,
+                    description=f"Server Link ({selector})"
+                )
+                print(f"Found server link with {selector_type} selector: {selector}")
+                break
+            except Exception as e:
+                print(f"Failed with {selector_type} selector {selector}: {str(e)}")
+                continue
+        
+        if not server_link:
+            raise Exception("Could not find server link with any selector")
+        
+        print("Clicking server link...")
+        driver.execute_script("arguments[0].click();", server_link)
         time.sleep(5)
         
+        print("Taking screenshot before looking for status-bar...")
+        driver.save_screenshot('debug_before_status_bar.png')
+        
         print("Looking for status-bar...")
-        status_bar = wait_and_find_element(
-            driver,
-            By.CSS_SELECTOR,
-            "div.status-bar",
-            description="Status Bar"
-        )
+        selectors = [
+            ("css", ".status-bar"),
+            ("css", ".server-status"),
+            ("xpath", "//div[contains(@class, 'status-bar')]"),
+            ("xpath", "//div[contains(@class, 'server-card')]//div[contains(@class, 'status-bar')]"),
+            ("xpath", "//div[contains(@class, 'container')]//div[contains(@class, 'status-bar')]")
+        ]
+        
+        status_bar = None
+        for selector_type, selector in selectors:
+            try:
+                status_bar = wait_and_find_element(
+                    driver,
+                    By.CSS_SELECTOR if selector_type == "css" else By.XPATH,
+                    selector,
+                    description=f"Status Bar ({selector})"
+                )
+                print(f"Found status bar with {selector_type} selector: {selector}")
+                break
+            except Exception as e:
+                print(f"Failed with {selector_type} selector {selector}: {str(e)}")
+                continue
+        
+        if not status_bar:
+            raise Exception("Could not find status-bar with any selector")
         
         print("Taking screenshot before clicking status-bar...")
         driver.save_screenshot('debug_before_click.png')
