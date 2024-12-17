@@ -7,7 +7,7 @@ on:
   workflow_dispatch:  # 允许手动触发
 
 jobs:
-  renew:
+  Auto_renew_tickhosting:
     runs-on: windows-latest  # 使用Windows运行环境
     
     steps:
