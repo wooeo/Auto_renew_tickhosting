@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-# 从环境变量获取cookie值
+# 从环境变量获取cookie
 SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
 
 def setup_driver():
@@ -26,23 +26,49 @@ def setup_driver():
     return webdriver.Chrome(options=options)
 
 def add_cookies(driver):
-    driver.add_cookie({
-        'name': 'PTERODACTYL_SESSION',
-        'value': os.environ['PTERODACTYL_SESSION'],
-        'domain': '.tickhosting.com'
-    })
-
-def update_last_renew_time(success, new_time=None, error_message=None):
-    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    status = "成功" if success else "失败"
-    content = f"最后续期时间: {current_time}\n状态: {status}"
-    if new_time:
-        content += f"\n新的到期时间: {new_time}"
-    if error_message:
-        content += f"\n错误信息: {error_message}"
+    print("Current cookies before adding:", driver.get_cookies())
+    driver.delete_all_cookies()
+    cookies = [
+        {
+            'name': 'PTERODACTYL_SESSION',
+            'value': os.environ['PTERODACTYL_SESSION'],
+            'domain': '.tickhosting.com'
+        },
+        {
+            'name': 'pterodactyl_session',
+            'value': os.environ['PTERODACTYL_SESSION'],
+            'domain': '.tickhosting.com'
+        }
+    ]
+    for cookie in cookies:
+        try:
+            driver.add_cookie(cookie)
+            print(f"Added cookie: {cookie['name']}")
+        except Exception as e:
+            print(f"Error adding cookie {cookie['name']}: {str(e)}")
     
-    with open('last_renew_data.txt', 'w', encoding='utf-8') as f:
-        f.write(content)
+    print("Current cookies after adding:", driver.get_cookies())
+
+def try_login(driver):
+    try:
+        print("\nAttempting to navigate to dashboard...")
+        driver.get("https://tickhosting.com")
+        time.sleep(5)
+        print(f"URL after navigation: {driver.current_url}")
+        
+        # Check if we're on the dashboard
+        if driver.title == "Dashboard":
+            print("Successfully reached dashboard")
+            return True
+            
+        print("\nPage title:", driver.title)
+        print("\nPage source preview:")
+        print(driver.page_source[:2000])
+        return False
+        
+    except Exception as e:
+        print(f"Error during login attempt: {str(e)}")
+        return False
 
 def wait_and_find_element(driver, by, value, timeout=20, description=""):
     try:
@@ -60,6 +86,18 @@ def wait_and_find_element(driver, by, value, timeout=20, description=""):
         print(f"Page source: {driver.page_source[:1000]}...")
         driver.save_screenshot(f'debug_{description.lower().replace(" ", "_")}.png')
         raise
+
+def update_last_renew_time(success, new_time=None, error_message=None):
+    current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    status = "成功" if success else "失败"
+    content = f"最后续期时间: {current_time}\n状态: {status}"
+    if new_time:
+        content += f"\n新的到期时间: {new_time}"
+    if error_message:
+        content += f"\n错误信息: {error_message}"
+    
+    with open('last_renew_data.txt', 'w', encoding='utf-8') as f:
+        f.write(content)
 
 def main():
     driver = None
@@ -83,51 +121,59 @@ def main():
         print("Taking screenshot of current page state...")
         driver.save_screenshot('debug_after_refresh.png')
 
-        # Try to navigate directly to the game panel URL first
-        print("Attempting to navigate to game panel...")
-        driver.get("https://tickhosting.com/panel")
-        time.sleep(5)
-
-        print(f"Current URL after panel navigation: {driver.current_url}")
-        print("Taking screenshot of panel page...")
-        driver.save_screenshot('debug_panel_page.png')
-
-        print("Page source:")
-        print(driver.page_source[:1000])  # Print first 1000 characters for debugging
-
-        print("Looking for server link...")
+        if not try_login(driver):
+            raise Exception("Failed to reach dashboard")
+        
+        print("\nLooking for server elements...")
         selectors = [
-            ("xpath", "//div[contains(@class, 'server-name')]"),
-            ("xpath", "//div[contains(@class, 'server-card')]"),
-            ("css", ".server-name"),
-            ("css", ".server-card"),
-            ("xpath", "//a[contains(@href, '/server/')]")
+            ("xpath", "//div[contains(@class, 'status-indicator')]"),
+            ("xpath", "//div[contains(@class, 'status-bar')]"),
+            ("xpath", "//div[contains(@class, 'server-status')]"),
+            ("xpath", "//div[contains(@class, 'server-power')]"),
+            ("xpath", "//div[contains(@class, 'server-info')]"),
+            ("css", ".status-indicator"),
+            ("css", ".status-bar"),
+            ("css", ".server-status")
         ]
 
-        server_link = None
+        # 先等待页面加载完成
+        print("Waiting for page to fully load...")
+        time.sleep(10)
+        
+        print("Taking screenshot before looking for status elements...")
+        driver.save_screenshot('debug_before_status.png')
+        
+        print("Current page title:", driver.title)
+        print("Current URL:", driver.current_url)
+        
+        server_element = None
         for selector_type, selector in selectors:
             try:
                 print(f"Trying {selector_type} selector: {selector}")
                 if selector_type == "xpath":
-                    element = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.XPATH, selector))
-                    )
+                    elements = driver.find_elements(By.XPATH, selector)
                 else:
-                    element = WebDriverWait(driver, 10).until(
-                        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
-                    )
-                server_link = element
-                print(f"Found element with {selector_type} selector: {selector}")
-                break
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                
+                if elements:
+                    print(f"Found {len(elements)} elements with {selector_type} selector: {selector}")
+                    for element in elements:
+                        try:
+                            print(f"Element text: {element.text}")
+                            print(f"Element HTML: {element.get_attribute('outerHTML')}")
+                        except:
+                            pass
+                    server_element = elements[0]
+                    break
             except Exception as e:
                 print(f"Failed with {selector_type} selector {selector}: {str(e)}")
                 continue
+        
+        if not server_element:
+            raise Exception("Could not find server element with any selector")
 
-        if not server_link:
-            raise Exception("Could not find server link with any selector")
-
-        print("Clicking server link...")
-        driver.execute_script("arguments[0].click();", server_link)
+        print("Clicking server element...")
+        driver.execute_script("arguments[0].click();", server_element)
         time.sleep(5)
 
         print("Taking screenshot before looking for status-bar...")
