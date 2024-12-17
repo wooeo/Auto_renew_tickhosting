@@ -193,21 +193,17 @@ def main():
 
         print("\nLooking for renew button...")
         renew_selectors = [
-            # 新增更精确的选择器
-            ("css", "button.button_buttonstyle-sc-1qu1gou-0"),
-            ("css", "button.renewbox__styledbutton-sc-1inh2rq-7"),
-            ("xpath", "//button[contains(@class, 'button_buttonstyle-sc-1qu1gou-0')]"),
-            ("xpath", "//button[contains(@class, 'renewbox__styledbutton')]"),
-            # 保留一些通用选择器作为后备
-            ("xpath", "//button[contains(text(), 'ADD 96 HOUR')]"),
-            ("xpath", "//button[contains(text(), '96 HOURS')]"),
-            ("xpath", "//button[contains(@class, 'button') and contains(text(), 'ADD')]"),
-            # 添加更通用的选择器
-            ("xpath", "//button[contains(text(), 'ADD')]"),
-            ("xpath", "//button[contains(text(), '96')]")
+            # 完全匹配类名
+            ("css", "button.Button__ButtonStyle-sc-1qu1gou-0.beoWBB.RenewBox___StyledButton-sc-1inh2rq-7.hMqrbU"),
+            # 部分匹配类名
+            ("xpath", "//button[contains(@class, 'Button__ButtonStyle-sc-1qu1gou-0') and contains(@class, 'RenewBox___StyledButton')]"),
+            # 匹配文本内容
+            ("xpath", "//button[.//span[text()='ADD 96 HOUR(S)']]"),
+            ("xpath", "//button[.//span[contains(text(), 'ADD 96 HOUR')]]"),
+            # 匹配color属性
+            ("xpath", "//button[@color='primary' and contains(@class, 'Button__ButtonStyle')]")
         ]
 
-        # 等待按钮可见
         print("\nWaiting for any button to become visible...")
         try:
             WebDriverWait(driver, 10).until(
@@ -227,13 +223,10 @@ def main():
                     elements = driver.find_elements(By.CSS_SELECTOR, selector)
                 
                 if elements:
-                    print(f"Found {len(elements)} renew buttons with {selector}")
+                    print(f"Found {len(elements)} elements with {selector_type}: {selector}")
                     for element in elements:
-                        try:
-                            print(f"Button text: {element.text}")
-                            print(f"Button HTML: {element.get_attribute('outerHTML')}")
-                        except:
-                            pass
+                        print(f"Element text: {element.text}")
+                        print(f"Element HTML: {element.get_attribute('outerHTML')}")
                     renew_button = elements[0]
                     break
             except Exception as e:
