@@ -171,12 +171,27 @@ def main():
 
         print("Clicking server element...")
         driver.execute_script("arguments[0].click();", server_element)
-        time.sleep(5)
+        
+        # 增加等待时间，确保页面完全加载
+        print("Waiting for server page to load completely...")
+        time.sleep(15)  # 增加到15秒
 
         print("Taking screenshot of server page...")
         driver.save_screenshot('debug_server_page.png')
 
-        print("Looking for renew button...")
+        # 打印所有按钮的信息
+        print("\nListing all buttons on the page:")
+        all_buttons = driver.find_elements(By.TAG_NAME, "button")
+        for idx, button in enumerate(all_buttons):
+            try:
+                print(f"\nButton {idx + 1}:")
+                print(f"Text: {button.text}")
+                print(f"Class: {button.get_attribute('class')}")
+                print(f"HTML: {button.get_attribute('outerHTML')}")
+            except Exception as e:
+                print(f"Error getting button info: {str(e)}")
+
+        print("\nLooking for renew button...")
         renew_selectors = [
             # 新增更精确的选择器
             ("css", "button.button_buttonstyle-sc-1qu1gou-0"),
@@ -186,12 +201,21 @@ def main():
             # 保留一些通用选择器作为后备
             ("xpath", "//button[contains(text(), 'ADD 96 HOUR')]"),
             ("xpath", "//button[contains(text(), '96 HOURS')]"),
-            ("xpath", "//button[contains(@class, 'button') and contains(text(), 'ADD')]")
+            ("xpath", "//button[contains(@class, 'button') and contains(text(), 'ADD')]"),
+            # 添加更通用的选择器
+            ("xpath", "//button[contains(text(), 'ADD')]"),
+            ("xpath", "//button[contains(text(), '96')]")
         ]
 
-        print("Current URL:", driver.current_url)
-        print("Page source preview:")
-        print(driver.page_source[:2000])
+        # 等待按钮可见
+        print("\nWaiting for any button to become visible...")
+        try:
+            WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((By.TAG_NAME, "button"))
+            )
+            print("Found at least one button on the page")
+        except TimeoutException:
+            print("No buttons found after waiting")
 
         renew_button = None
         for selector_type, selector in renew_selectors:
