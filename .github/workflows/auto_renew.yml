@@ -1,18 +1,22 @@
-name: Auto Renew Tickhosting Server
+name: Auto Renew Tick Hosting Server
 
 on:
   schedule:
-    # 每4天运行一次（96小时），在UTC时间00:00运行
-    - cron: '0 0 */4 * *'
-  workflow_dispatch:  # 允许手动触发
+    - cron: '0 0 */4 * *'  # 每4天运行一次（96小时）,在UTC时间00:00运行
+  workflow_dispatch: 
+
+permissions:
+  contents: write 
 
 jobs:
-  Auto_renew_tickhosting:
-    runs-on: windows-latest  # 使用Windows运行环境
+  Auto_renew_tickhosting_server:
+    runs-on: windows-latest 
     
     steps:
     - name: Checkout repository
       uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
       
     - name: Set up Python
       uses: actions/setup-python@v2
@@ -34,8 +38,8 @@ jobs:
 
     - name: Commit and push if changed
       run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
         git add last_renew_data.txt
         git commit -m "Update renewal status" || exit 0
-        git push
+        git push origin HEAD:main
