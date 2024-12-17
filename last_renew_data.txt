@@ -1,3 +1,25 @@
-最后续期时间: 2024-12-17 20:06:48
+最后续期时间: 2024-12-17 20:18:17
 状态: 失败
-错误信息: An error occurred: Could not find renew button
+错误信息: Timeout error: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF7906B6CC5+28821]
+	(No symbol) [0x00007FF790623850]
+	(No symbol) [0x00007FF7904C578A]
+	(No symbol) [0x00007FF7905191BE]
+	(No symbol) [0x00007FF7905194AC]
+	(No symbol) [0x00007FF790562647]
+	(No symbol) [0x00007FF79053F33F]
+	(No symbol) [0x00007FF79055F412]
+	(No symbol) [0x00007FF79053F0A3]
+	(No symbol) [0x00007FF79050A778]
+	(No symbol) [0x00007FF79050B8E1]
+	GetHandleVerifier [0x00007FF7909EFCCD+3408029]
+	GetHandleVerifier [0x00007FF790A0743F+3504143]
+	GetHandleVerifier [0x00007FF7909FB61D+3455469]
+	GetHandleVerifier [0x00007FF79077BDCB+835995]
+	(No symbol) [0x00007FF79062EB6F]
+	(No symbol) [0x00007FF79062A824]
+	(No symbol) [0x00007FF79062A9BD]
+	(No symbol) [0x00007FF79061A1A9]
+	BaseThreadInitThunk [0x00007FFDC12C4CB0+16]
+	RtlUserThreadStart [0x00007FFDC29FEDCB+43]
