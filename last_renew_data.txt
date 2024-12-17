@@ -1,2 +1,25 @@
-最后续期时间: 2024-12-17 18:41:25
+最后续期时间: 2024-12-17 18:49:35
 状态: 失败
+错误信息: Timeout error: Message: 
+Stacktrace:
+	GetHandleVerifier [0x00007FF7FEED6CC5+28821]
+	(No symbol) [0x00007FF7FEE43850]
+	(No symbol) [0x00007FF7FECE578A]
+	(No symbol) [0x00007FF7FED391BE]
+	(No symbol) [0x00007FF7FED394AC]
+	(No symbol) [0x00007FF7FED82647]
+	(No symbol) [0x00007FF7FED5F33F]
+	(No symbol) [0x00007FF7FED7F412]
+	(No symbol) [0x00007FF7FED5F0A3]
+	(No symbol) [0x00007FF7FED2A778]
+	(No symbol) [0x00007FF7FED2B8E1]
+	GetHandleVerifier [0x00007FF7FF20FCCD+3408029]
+	GetHandleVerifier [0x00007FF7FF22743F+3504143]
+	GetHandleVerifier [0x00007FF7FF21B61D+3455469]
+	GetHandleVerifier [0x00007FF7FEF9BDCB+835995]
+	(No symbol) [0x00007FF7FEE4EB6F]
+	(No symbol) [0x00007FF7FEE4A824]
+	(No symbol) [0x00007FF7FEE4A9BD]
+	(No symbol) [0x00007FF7FEE3A1A9]
+	BaseThreadInitThunk [0x00007FFF9FCD4CB0+16]
+	RtlUserThreadStart [0x00007FFFA0E7EDCB+43]
