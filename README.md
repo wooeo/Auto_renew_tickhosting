@@ -1,4 +1,4 @@
-# Tick Hosting Auto Renew
+# Auto Renew Tickhosting
 
 自动续期 Tick Hosting 免费服务器的脚本，使用 GitHub Actions 每96小时自动运行一次。
 
@@ -36,45 +36,6 @@
 - 您可以在 Actions 页面查看运行状态和日志
 - 需要立即运行时，可以在 Actions 页面手动触发
 
-## 项目结构
-
-```
-.
-├── .github/workflows/    # GitHub Actions 配置
-│   └── auto_renew.yml   # 工作流配置文件
-├── auto_renew.py        # 主程序脚本
-├── requirements.txt     # Python 依赖
-└── README.md           # 项目说明
-```
-
-## 依赖
-
-- Python 3.x
-- Selenium
-- Chrome 浏览器
-
-## 本地运行
-
-如果需要在本地运行测试：
-
-1. 安装依赖：
-```bash
-pip install -r requirements.txt
-```
-
-2. 设置环境变量：
-```bash
-# Windows
-set PTERODACTYL_SESSION=你的cookie值
-
-# Linux/Mac
-export PTERODACTYL_SESSION=你的cookie值
-```
-
-3. 运行脚本：
-```bash
-python auto_renew.py
-```
 
 ## 注意事项
 
