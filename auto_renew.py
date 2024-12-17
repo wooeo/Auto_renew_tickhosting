@@ -2,7 +2,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from datetime import datetime
 import time
 from dateutil import parser
@@ -98,6 +98,47 @@ def update_last_renew_time(success, new_time=None, error_message=None):
     
     with open('last_renew_data.txt', 'w', encoding='utf-8') as f:
         f.write(content)
+
+def check_renewal_success(driver):
+    """Check if renewal was successful by looking for multiple indicators"""
+    try:
+        # Method 1: Check if the button is no longer clickable or has changed state
+        renew_button = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//button[.//span[text()='ADD 96 HOUR(S)']]"))
+        )
+        if not renew_button.is_enabled():
+            print("Renewal likely successful - button is disabled")
+            return True
+            
+        # Method 2: Look for any success messages or notifications
+        success_indicators = [
+            "//div[contains(@class, 'alert-success')]",
+            "//div[contains(@class, 'notification-success')]",
+            "//div[contains(@class, 'toast-success')]"
+        ]
+        
+        for indicator in success_indicators:
+            try:
+                element = driver.find_element(By.XPATH, indicator)
+                if element.is_displayed():
+                    print(f"Found success indicator: {element.text}")
+                    return True
+            except NoSuchElementException:
+                continue
+                
+        # Method 3: Check if page reloaded or URL changed
+        current_url = driver.current_url
+        driver.refresh()
+        time.sleep(2)
+        if driver.current_url != current_url:
+            print("Page URL changed after refresh - likely successful")
+            return True
+            
+        return False
+        
+    except Exception as e:
+        print(f"Error checking renewal success: {str(e)}")
+        return False
 
 def main():
     driver = None
@@ -269,6 +310,13 @@ def main():
 
         print("Taking screenshot after renewal...")
         driver.save_screenshot('debug_after_renewal.png')
+
+        if check_renewal_success(driver):
+            print("Renewal appears to be successful!")
+            driver.save_screenshot('after_renewal_success.png')
+        else:
+            print("Could not verify renewal success - please check manually")
+            driver.save_screenshot('after_renewal_unknown.png')
 
         print("Checking new expiry time...")
         expiry_element = wait_and_find_element(
