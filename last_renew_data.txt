@@ -1,3 +1,3 @@
-最后续期时间: 2024-12-17 19:43:20
+最后续期时间: 2024-12-17 19:51:38
 状态: 失败
-错误信息: An error occurred: Could not find status-bar with any selector
+错误信息: An error occurred: Could not find renew button
