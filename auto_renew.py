@@ -9,7 +9,7 @@ from dateutil import parser
 import os
 
 # 从环境变量获取cookie值
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', 'eyJpdiI6InNaVURiZVl1SlIwMEI5c3ZMbUM5ZVE9PSIsInZhbHVlIjoiNVNsInZ')
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', 'eyJpdiI')
 
 def setup_driver():
     options = webdriver.ChromeOptions()
