@@ -126,14 +126,11 @@ def main():
         
         print("\nLooking for server elements...")
         selectors = [
-            ("xpath", "//div[contains(@class, 'status-indicator')]"),
             ("xpath", "//div[contains(@class, 'status-bar')]"),
             ("xpath", "//div[contains(@class, 'server-status')]"),
-            ("xpath", "//div[contains(@class, 'server-power')]"),
-            ("xpath", "//div[contains(@class, 'server-info')]"),
-            ("css", ".status-indicator"),
+            ("xpath", "//div[contains(@class, 'server-card')]"),
             ("css", ".status-bar"),
-            ("css", ".server-status")
+            ("css", ".server-card")
         ]
 
         # 先等待页面加载完成
@@ -168,7 +165,7 @@ def main():
             except Exception as e:
                 print(f"Failed with {selector_type} selector {selector}: {str(e)}")
                 continue
-        
+
         if not server_element:
             raise Exception("Could not find server element with any selector")
 
@@ -176,63 +173,73 @@ def main():
         driver.execute_script("arguments[0].click();", server_element)
         time.sleep(5)
 
-        print("Taking screenshot before looking for status-bar...")
-        driver.save_screenshot('debug_before_status_bar.png')
-
-        print("Looking for status-bar...")
-        selectors = [
-            ("css", ".status-bar"),
-            ("css", ".server-status"),
-            ("xpath", "//div[contains(@class, 'status-bar')]"),
-            ("xpath", "//div[contains(@class, 'server-card')]//div[contains(@class, 'status-bar')]"),
-            ("xpath", "//div[contains(@class, 'container')]//div[contains(@class, 'status-bar')]")
-        ]
-
-        status_bar = None
-        for selector_type, selector in selectors:
-            try:
-                status_bar = wait_and_find_element(
-                    driver,
-                    By.CSS_SELECTOR if selector_type == "css" else By.XPATH,
-                    selector,
-                    description=f"Status Bar ({selector})"
-                )
-                print(f"Found status bar with {selector_type} selector: {selector}")
-                break
-            except Exception as e:
-                print(f"Failed with {selector_type} selector {selector}: {str(e)}")
-                continue
-
-        if not status_bar:
-            raise Exception("Could not find status-bar with any selector")
-
-        print("Taking screenshot before clicking status-bar...")
-        driver.save_screenshot('debug_before_click.png')
-
-        print("Clicking status-bar...")
-        driver.execute_script("arguments[0].click();", status_bar)
-        time.sleep(5)
-
         print("Taking screenshot of server page...")
         driver.save_screenshot('debug_server_page.png')
 
         print("Looking for renew button...")
-        renew_button = wait_and_find_element(
-            driver,
-            By.XPATH,
-            "//button[contains(text(), 'ADD') or contains(text(), '96 HOURS') or contains(@class, 'Button')]",
-            description="Renew Button"
-        )
+        renew_selectors = [
+            ("xpath", "//button[contains(text(), 'ADD 96 HOUR')]"),
+            ("xpath", "//button[contains(text(), '96 HOURS')]"),
+            ("xpath", "//button[contains(@class, 'button') and contains(text(), 'ADD')]"),
+            ("xpath", "//button[contains(@class, 'button') and contains(text(), '96')]"),
+            ("xpath", "//button[contains(@class, 'renew')]"),
+            ("css", "button.renew-button"),
+            ("css", "button.add-time")
+        ]
+
+        print("Current URL:", driver.current_url)
+        print("Page source preview:")
+        print(driver.page_source[:2000])
+
+        renew_button = None
+        for selector_type, selector in renew_selectors:
+            try:
+                print(f"Looking for renew button with {selector_type}: {selector}")
+                if selector_type == "xpath":
+                    elements = driver.find_elements(By.XPATH, selector)
+                else:
+                    elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                
+                if elements:
+                    print(f"Found {len(elements)} renew buttons with {selector}")
+                    for element in elements:
+                        try:
+                            print(f"Button text: {element.text}")
+                            print(f"Button HTML: {element.get_attribute('outerHTML')}")
+                        except:
+                            pass
+                    renew_button = elements[0]
+                    break
+            except Exception as e:
+                print(f"Failed with {selector_type} selector {selector}: {str(e)}")
+                continue
+
+        if not renew_button:
+            raise Exception("Could not find renew button")
 
         print("Getting initial expiry time...")
-        expiry_element = wait_and_find_element(
-            driver,
-            By.XPATH,
-            "//div[contains(text(), 'EXPIRED:') or contains(text(), 'Free server')]",
-            description="Expiry Time Element"
-        )
-        initial_time = expiry_element.text
-        print(f"Initial time text: {initial_time}")
+        expiry_selectors = [
+            ("xpath", "//div[contains(@class, 'expiry')]"),
+            ("xpath", "//div[contains(text(), 'EXPIRED:')]"),
+            ("xpath", "//div[contains(@class, 'time-remaining')]")
+        ]
+
+        expiry_element = None
+        for selector_type, selector in expiry_selectors:
+            try:
+                elements = driver.find_elements(By.XPATH if selector_type == "xpath" else By.CSS_SELECTOR, selector)
+                if elements:
+                    expiry_element = elements[0]
+                    break
+            except:
+                continue
+
+        if expiry_element:
+            initial_time = expiry_element.text
+            print(f"Initial time text: {initial_time}")
+        else:
+            print("Could not find expiry time element")
+            initial_time = "unknown"
 
         print("Clicking renew button...")
         driver.execute_script("arguments[0].click();", renew_button)
