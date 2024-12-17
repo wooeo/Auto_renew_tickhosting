@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-# 从环境变量获取cookie
+# 从环境变量获取cookie值
 SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
 
 def setup_driver():
@@ -178,13 +178,15 @@ def main():
 
         print("Looking for renew button...")
         renew_selectors = [
+            # 新增更精确的选择器
+            ("css", "button.button_buttonstyle-sc-1qu1gou-0"),
+            ("css", "button.renewbox__styledbutton-sc-1inh2rq-7"),
+            ("xpath", "//button[contains(@class, 'button_buttonstyle-sc-1qu1gou-0')]"),
+            ("xpath", "//button[contains(@class, 'renewbox__styledbutton')]"),
+            # 保留一些通用选择器作为后备
             ("xpath", "//button[contains(text(), 'ADD 96 HOUR')]"),
             ("xpath", "//button[contains(text(), '96 HOURS')]"),
-            ("xpath", "//button[contains(@class, 'button') and contains(text(), 'ADD')]"),
-            ("xpath", "//button[contains(@class, 'button') and contains(text(), '96')]"),
-            ("xpath", "//button[contains(@class, 'renew')]"),
-            ("css", "button.renew-button"),
-            ("css", "button.add-time")
+            ("xpath", "//button[contains(@class, 'button') and contains(text(), 'ADD')]")
         ]
 
         print("Current URL:", driver.current_url)
