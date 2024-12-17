@@ -9,10 +9,15 @@ from dateutil import parser
 import os
 
 # 从环境变量获取cookie值
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', 'eyJpdiI')
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
 
 def setup_driver():
     options = webdriver.ChromeOptions()
+    options.add_argument('--headless') 
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-gpu')
+    options.add_argument('--window-size=1920,1080')
     options.add_argument('--start-maximized')
     return webdriver.Chrome(options=options)
 
@@ -35,37 +40,45 @@ def update_last_renew_time(success, new_time=None):
         f.write(content)
 
 def main():
+    driver = None
     try:
-        # Initialize driver
+        print("Starting browser...")
         driver = setup_driver()
         
+        print("Navigating to website...")
         # First navigate to the domain to set cookies
         driver.get("https://tickhosting.com")
         add_cookies(driver)
         
+        print("Navigating to login page...")
         # Navigate to login page
         driver.get("https://tickhosting.com/auth/login")
         time.sleep(3)  # Wait for page load
         
+        print("Navigating to server page...")
         # Navigate to server management page
         driver.get("https://tickhosting.com/server")
         
+        print("Looking for status bar...")
         # Wait for and click the status bar
         status_bar = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CLASS_NAME, "status-bar"))
         )
         status_bar.click()
         
+        print("Looking for renew button...")
         # Wait for and click the renew button
         renew_button = WebDriverWait(driver, 10).until(
             EC.element_to_be_clickable((By.CLASS_NAME, "Button___StyledSpan-sc-1qu1gou-2"))
         )
         
+        print("Getting initial expiry time...")
         # Get initial expiry time
         expiry_element = driver.find_element(By.XPATH, "//div[contains(text(), 'EXPIRED:')]")
         initial_time = expiry_element.text.replace("EXPIRED:", "").strip()
         initial_datetime = parser.parse(initial_time)
         
+        print("Clicking renew button...")
         # Click renew button
         renew_button.click()
         
@@ -73,6 +86,7 @@ def main():
         print("Waiting 70 seconds for renewal process...")
         time.sleep(70)
         
+        print("Checking new expiry time...")
         # Check new expiry time
         expiry_element = driver.find_element(By.XPATH, "//div[contains(text(), 'EXPIRED:')]")
         new_time = expiry_element.text.replace("EXPIRED:", "").strip()
@@ -93,8 +107,11 @@ def main():
         print(f"An error occurred: {str(e)}")
         update_last_renew_time(False)
     finally:
-        time.sleep(5)  # Wait a bit before closing
-        driver.quit()
+        if driver:
+            try:
+                driver.quit()
+            except Exception as e:
+                print(f"Error closing browser: {str(e)}")
 
 if __name__ == "__main__":
     main()
