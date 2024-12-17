@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-# 从环境变量获取cookie
+# 从环境变量获取cookie值
 SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
 
 def setup_driver():
@@ -26,13 +26,11 @@ def setup_driver():
     return webdriver.Chrome(options=options)
 
 def add_cookies(driver):
-    cookie = {
-        "name": "pterodactyl_session",
-        "value": SESSION_COOKIE,
-        "domain": "tickhosting.com"
-    }
-    driver.delete_all_cookies()
-    driver.add_cookie(cookie)
+    driver.add_cookie({
+        'name': 'PTERODACTYL_SESSION',
+        'value': os.environ['PTERODACTYL_SESSION'],
+        'domain': '.tickhosting.com'
+    })
 
 def update_last_renew_time(success, new_time=None, error_message=None):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -76,49 +74,65 @@ def main():
         
         print("Adding cookies...")
         add_cookies(driver)
-        time.sleep(2)
-        
+
         print("Refreshing page after adding cookies...")
         driver.refresh()
-        time.sleep(10)
-        
-        print("Taking screenshot before looking for server link...")
-        driver.save_screenshot('debug_before_server_link.png')
-        
+        time.sleep(5)  # Give more time for the page to load
+
+        print(f"Current URL after refresh: {driver.current_url}")
+        print("Taking screenshot of current page state...")
+        driver.save_screenshot('debug_after_refresh.png')
+
+        # Try to navigate directly to the game panel URL first
+        print("Attempting to navigate to game panel...")
+        driver.get("https://tickhosting.com/panel")
+        time.sleep(5)
+
+        print(f"Current URL after panel navigation: {driver.current_url}")
+        print("Taking screenshot of panel page...")
+        driver.save_screenshot('debug_panel_page.png')
+
+        print("Page source:")
+        print(driver.page_source[:1000])  # Print first 1000 characters for debugging
+
         print("Looking for server link...")
-        # 尝试多个选择器
         selectors = [
-            ("xpath", "//a[@href='/' and contains(@class, 'nav_link')]"),
-            ("xpath", "//a[contains(@class, 'nav_link') and .//i[contains(@class, 'bx-server')]]"),
-            ("xpath", "//a[.//span[contains(text(), 'Servers')]]"),
-            ("css", "a.nav_link[href='/']")
+            ("xpath", "//div[contains(@class, 'server-name')]"),
+            ("xpath", "//div[contains(@class, 'server-card')]"),
+            ("css", ".server-name"),
+            ("css", ".server-card"),
+            ("xpath", "//a[contains(@href, '/server/')]")
         ]
-        
+
         server_link = None
         for selector_type, selector in selectors:
             try:
-                server_link = wait_and_find_element(
-                    driver,
-                    By.CSS_SELECTOR if selector_type == "css" else By.XPATH,
-                    selector,
-                    description=f"Server Link ({selector})"
-                )
-                print(f"Found server link with {selector_type} selector: {selector}")
+                print(f"Trying {selector_type} selector: {selector}")
+                if selector_type == "xpath":
+                    element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.XPATH, selector))
+                    )
+                else:
+                    element = WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located((By.CSS_SELECTOR, selector))
+                    )
+                server_link = element
+                print(f"Found element with {selector_type} selector: {selector}")
                 break
             except Exception as e:
                 print(f"Failed with {selector_type} selector {selector}: {str(e)}")
                 continue
-        
+
         if not server_link:
             raise Exception("Could not find server link with any selector")
-        
+
         print("Clicking server link...")
         driver.execute_script("arguments[0].click();", server_link)
         time.sleep(5)
-        
+
         print("Taking screenshot before looking for status-bar...")
         driver.save_screenshot('debug_before_status_bar.png')
-        
+
         print("Looking for status-bar...")
         selectors = [
             ("css", ".status-bar"),
@@ -127,7 +141,7 @@ def main():
             ("xpath", "//div[contains(@class, 'server-card')]//div[contains(@class, 'status-bar')]"),
             ("xpath", "//div[contains(@class, 'container')]//div[contains(@class, 'status-bar')]")
         ]
-        
+
         status_bar = None
         for selector_type, selector in selectors:
             try:
@@ -142,20 +156,20 @@ def main():
             except Exception as e:
                 print(f"Failed with {selector_type} selector {selector}: {str(e)}")
                 continue
-        
+
         if not status_bar:
             raise Exception("Could not find status-bar with any selector")
-        
+
         print("Taking screenshot before clicking status-bar...")
         driver.save_screenshot('debug_before_click.png')
-        
+
         print("Clicking status-bar...")
         driver.execute_script("arguments[0].click();", status_bar)
         time.sleep(5)
-        
+
         print("Taking screenshot of server page...")
         driver.save_screenshot('debug_server_page.png')
-        
+
         print("Looking for renew button...")
         renew_button = wait_and_find_element(
             driver,
@@ -163,7 +177,7 @@ def main():
             "//button[contains(text(), 'ADD') or contains(text(), '96 HOURS') or contains(@class, 'Button')]",
             description="Renew Button"
         )
-        
+
         print("Getting initial expiry time...")
         expiry_element = wait_and_find_element(
             driver,
@@ -173,17 +187,17 @@ def main():
         )
         initial_time = expiry_element.text
         print(f"Initial time text: {initial_time}")
-        
+
         print("Clicking renew button...")
         driver.execute_script("arguments[0].click();", renew_button)
         time.sleep(2)
-        
+
         print("Waiting 70 seconds for renewal process...")
         time.sleep(70)
-        
+
         print("Taking screenshot after renewal...")
         driver.save_screenshot('debug_after_renewal.png')
-        
+
         print("Checking new expiry time...")
         expiry_element = wait_and_find_element(
             driver,
@@ -193,7 +207,7 @@ def main():
         )
         new_time = expiry_element.text
         print(f"New time text: {new_time}")
-        
+
         if "EXPIRED:" in new_time:
             new_time = new_time.replace("EXPIRED:", "").strip()
             initial_time = initial_time.replace("EXPIRED:", "").strip()
@@ -213,7 +227,7 @@ def main():
         else:
             print("Could not find expiry time in expected format")
             update_last_renew_time(False, error_message="无法找到到期时间")
-            
+
     except TimeoutException as e:
         error_msg = f"Timeout error: {str(e)}"
         print(error_msg)
