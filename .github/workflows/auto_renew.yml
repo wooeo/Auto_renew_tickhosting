@@ -1,4 +1,4 @@
-name: Auto Renew Tick Hosting Server
+name: Auto Renew Tickhosting
 
 on:
   schedule:
