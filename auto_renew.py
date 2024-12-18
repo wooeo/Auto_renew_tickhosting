@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '') 
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')   # 此处单引号里添加名为pterodactyl_session的cookie或在settings-actons里设置secrets环境变量
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -200,11 +200,6 @@ def main():
 
         # Commented out button printing
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
-        # for idx, button in enumerate(all_buttons):
-        #     print(f"Button {idx + 1}:")
-        #     print(f"Text: {button.text}")
-        #     print(f"Class: {button.get_attribute('class')}")
-        #     print(f"HTML: {button.get_attribute('outerHTML')}\n")
 
         print("\nLooking for renew button...")
         renew_selectors = [
