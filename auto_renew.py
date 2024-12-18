@@ -98,40 +98,29 @@ def update_last_renew_time(success, new_time=None, error_message=None):
     with open('last_renew_data.txt', 'w', encoding='utf-8') as f:
         f.write(content)
 
-def check_renewal_success(driver):
-    try:
-        # Get expiration time before renewal
-        before_expire_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Expired')]"))
-        )
-        before_expire_time = before_expire_element.text
-
-        # Click renewal button
-        renew_button = WebDriverWait(driver, 10).until(
-            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'ADD 96 HOUR(S)')]"))
-        )
-        renew_button.click()
-
-        # Wait for page refresh
-        WebDriverWait(driver, 10).until(EC.staleness_of(before_expire_element))
-
-        # Get expiration time after renewal
-        after_expire_element = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Expired')]"))
-        )
-        after_expire_time = after_expire_element.text
-
-        # Compare times
-        if after_expire_time > before_expire_time:
-            print("Renewal successful: Expiration time extended")
-            return True
-        else:
-            print("Renewal failed: Expiration time unchanged")
-            return False
-
-    except Exception as e:
-        print(f"Renewal check error: {e}")
-        return False
+def get_expiration_time(driver):
+    expiry_selectors = [
+        ("xpath", "//div[contains(text(), 'Expired')]"),
+        ("xpath", "//div[contains(text(), 'EXPIRED:')]"),
+        ("xpath", "//div[contains(@class, 'expiry')]"),
+        ("xpath", "//div[contains(@class, 'server-details')]//div[contains(text(), 'Expires')]"),
+        ("xpath", "//span[contains(text(), 'Expires')]"),
+        ("xpath", "//div[contains(text(), 'Free server')]")
+    ]
+    
+    for selector_type, selector in expiry_selectors:
+        try:
+            element = WebDriverWait(driver, 10).until(
+                EC.presence_of_element_located((selector_type, selector))
+            )
+            expiry_text = element.text
+            print(f"Found expiration time: {expiry_text}")
+            return expiry_text
+        except Exception as e:
+            print(f"Failed to find with selector {selector}: {e}")
+    
+    print("Could not find expiration time with any selector")
+    return None
 
 def main():
     driver = None
@@ -266,76 +255,40 @@ def main():
         if not renew_button:
             raise Exception("Could not find renew button")
 
-        print("Getting initial expiration time...")
-        expiry_selectors = [
-            ("xpath", "//div[contains(@class, 'expiry')]"),
-            ("xpath", "//div[contains(text(), 'EXPIRED:')]"),
-            ("xpath", "//div[contains(@class, 'time-remaining')]")
-        ]
+        # Get initial expiration time
+        initial_time = get_expiration_time(driver)
+        
+        # Click renew button
+        renew_button.click()
 
-        expiry_element = None
-        for selector_type, selector in expiry_selectors:
-            try:
-                elements = driver.find_elements(By.XPATH if selector_type == "xpath" else By.CSS_SELECTOR, selector)
-                if elements:
-                    expiry_element = elements[0]
-                    break
-            except:
-                continue
+        # Wait for page to update
+        time.sleep(10)  # Increased wait time
+        driver.refresh()
+        time.sleep(5)  # Additional wait after refresh
 
-        if expiry_element:
-            initial_time = expiry_element.text
-            print(f"Initial time text: {initial_time}")
-        else:
-            print("Could not find expiration time element")
-            initial_time = "unknown"
+        # Get new expiration time
+        new_time = get_expiration_time(driver)
 
-        print("Clicking renew button...")
-        driver.execute_script("arguments[0].click();", renew_button)
-        time.sleep(2)
-
-        print("Waiting 70 seconds for renewal process...")
-        time.sleep(70)
-
-        print("Taking screenshot after renewal...")
-        driver.save_screenshot('debug_after_renewal.png')
-
-        if check_renewal_success(driver):
-            print("Renewal appears to be successful!")
-            driver.save_screenshot('after_renewal_success.png')
-        else:
-            print("Could not verify renewal success - please check manually")
-            driver.save_screenshot('after_renewal_unknown.png')
-
-        print("Checking new expiration time...")
-        expiry_element = wait_and_find_element(
-            driver,
-            By.XPATH,
-            "//div[contains(text(), 'EXPIRED:') or contains(text(), 'Free server')]",
-            description="New Expiration Time Element"
-        )
-        new_time = expiry_element.text
-        print(f"New time text: {new_time}")
-
-        if "EXPIRED:" in new_time:
-            new_time = new_time.replace("EXPIRED:", "").strip()
-            initial_time = initial_time.replace("EXPIRED:", "").strip()
+        # Compare times
+        if initial_time and new_time:
             try:
                 initial_datetime = parser.parse(initial_time)
                 new_datetime = parser.parse(new_time)
+                
                 if new_datetime > initial_datetime:
                     print("Renewal successful! Time has been extended.")
-                    print(f"New expiration time: {new_time}")
+                    print(f"Initial time: {initial_time}")
+                    print(f"New time: {new_time}")
                     update_last_renew_time(True, new_time)
                 else:
                     print("Renewal may have failed. Time was not extended.")
-                    update_last_renew_time(False, error_message="Time was not extended")
+                    update_last_renew_time(False, error_message="Time not extended")
             except Exception as e:
                 print(f"Error parsing dates: {str(e)}")
                 update_last_renew_time(False, error_message=f"Date parsing error: {str(e)}")
         else:
-            print("Could not find expiration time in expected format")
-            update_last_renew_time(False, error_message="Could not find expiration time")
+            print("Could not verify renewal - unable to get expiration times")
+            update_last_renew_time(False, error_message="Could not find expiration times")
 
     except TimeoutException as e:
         error_msg = f"Timeout error: {str(e)}"
