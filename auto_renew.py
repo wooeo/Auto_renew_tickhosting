@@ -8,8 +8,7 @@ import time
 from dateutil import parser
 import os
 
-# 从环境变量获取cookie
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')   # 此处单引号里添加名为pterodactyl_session的cookie或在settings-actons里设置secrets环境变量
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -89,55 +88,49 @@ def wait_and_find_element(driver, by, value, timeout=20, description=""):
 
 def update_last_renew_time(success, new_time=None, error_message=None):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    status = "成功" if success else "失败"
-    content = f"最后续期时间: {current_time}\n状态: {status}"
+    status = "Success" if success else "Failed"
+    content = f"Last renewal time: {current_time}\nStatus: {status}"
     if new_time:
-        content += f"\n新的到期时间: {new_time}"
+        content += f"\nNew expiration time: {new_time}"
     if error_message:
-        content += f"\n错误信息: {error_message}"
+        content += f"\nError message: {error_message}"
     
     with open('last_renew_data.txt', 'w', encoding='utf-8') as f:
         f.write(content)
 
 def check_renewal_success(driver):
-    """Check if renewal was successful by looking for multiple indicators"""
     try:
-        # Method 1: Check if the button is no longer clickable or has changed state
-        renew_button = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.XPATH, "//button[.//span[text()='ADD 96 HOUR(S)']]"))
+        # Get expiration time before renewal
+        before_expire_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Expired')]"))
         )
-        if not renew_button.is_enabled():
-            print("Renewal likely successful - button is disabled")
+        before_expire_time = before_expire_element.text
+
+        # Click renewal button
+        renew_button = WebDriverWait(driver, 10).until(
+            EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'ADD 96 HOUR(S)')]"))
+        )
+        renew_button.click()
+
+        # Wait for page refresh
+        WebDriverWait(driver, 10).until(EC.staleness_of(before_expire_element))
+
+        # Get expiration time after renewal
+        after_expire_element = WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'Expired')]"))
+        )
+        after_expire_time = after_expire_element.text
+
+        # Compare times
+        if after_expire_time > before_expire_time:
+            print("Renewal successful: Expiration time extended")
             return True
-            
-        # Method 2: Look for any success messages or notifications
-        success_indicators = [
-            "//div[contains(@class, 'alert-success')]",
-            "//div[contains(@class, 'notification-success')]",
-            "//div[contains(@class, 'toast-success')]"
-        ]
-        
-        for indicator in success_indicators:
-            try:
-                element = driver.find_element(By.XPATH, indicator)
-                if element.is_displayed():
-                    print(f"Found success indicator: {element.text}")
-                    return True
-            except NoSuchElementException:
-                continue
-                
-        # Method 3: Check if page reloaded or URL changed
-        current_url = driver.current_url
-        driver.refresh()
-        time.sleep(2)
-        if driver.current_url != current_url:
-            print("Page URL changed after refresh - likely successful")
-            return True
-            
-        return False
-        
+        else:
+            print("Renewal failed: Expiration time unchanged")
+            return False
+
     except Exception as e:
-        print(f"Error checking renewal success: {str(e)}")
+        print(f"Renewal check error: {e}")
         return False
 
 def main():
@@ -174,7 +167,7 @@ def main():
             ("css", ".server-card")
         ]
 
-        # 先等待页面加载完成
+        # Wait for page to fully load
         print("Waiting for page to fully load...")
         time.sleep(10)
         
@@ -213,35 +206,31 @@ def main():
         print("Clicking server element...")
         driver.execute_script("arguments[0].click();", server_element)
         
-        # 增加等待时间，确保页面完全加载
+        # Increase wait time to ensure page is fully loaded
         print("Waiting for server page to load completely...")
-        time.sleep(15)  # 增加到15秒
+        time.sleep(15)  # Increase to 15 seconds
 
         print("Taking screenshot of server page...")
         driver.save_screenshot('debug_server_page.png')
 
-        # 打印所有按钮的信息
-        print("\nListing all buttons on the page:")
+        # Commented out button printing
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
-        for idx, button in enumerate(all_buttons):
-            try:
-                print(f"\nButton {idx + 1}:")
-                print(f"Text: {button.text}")
-                print(f"Class: {button.get_attribute('class')}")
-                print(f"HTML: {button.get_attribute('outerHTML')}")
-            except Exception as e:
-                print(f"Error getting button info: {str(e)}")
+        # for idx, button in enumerate(all_buttons):
+        #     print(f"Button {idx + 1}:")
+        #     print(f"Text: {button.text}")
+        #     print(f"Class: {button.get_attribute('class')}")
+        #     print(f"HTML: {button.get_attribute('outerHTML')}\n")
 
         print("\nLooking for renew button...")
         renew_selectors = [
-            # 完全匹配类名
+            # Match class name exactly
             ("css", "button.Button__ButtonStyle-sc-1qu1gou-0.beoWBB.RenewBox___StyledButton-sc-1inh2rq-7.hMqrbU"),
-            # 部分匹配类名
+            # Match class name partially
             ("xpath", "//button[contains(@class, 'Button__ButtonStyle-sc-1qu1gou-0') and contains(@class, 'RenewBox___StyledButton')]"),
-            # 匹配文本内容
+            # Match text content
             ("xpath", "//button[.//span[text()='ADD 96 HOUR(S)']]"),
             ("xpath", "//button[.//span[contains(text(), 'ADD 96 HOUR')]]"),
-            # 匹配color属性
+            # Match color attribute
             ("xpath", "//button[@color='primary' and contains(@class, 'Button__ButtonStyle')]")
         ]
 
@@ -277,7 +266,7 @@ def main():
         if not renew_button:
             raise Exception("Could not find renew button")
 
-        print("Getting initial expiry time...")
+        print("Getting initial expiration time...")
         expiry_selectors = [
             ("xpath", "//div[contains(@class, 'expiry')]"),
             ("xpath", "//div[contains(text(), 'EXPIRED:')]"),
@@ -298,7 +287,7 @@ def main():
             initial_time = expiry_element.text
             print(f"Initial time text: {initial_time}")
         else:
-            print("Could not find expiry time element")
+            print("Could not find expiration time element")
             initial_time = "unknown"
 
         print("Clicking renew button...")
@@ -318,12 +307,12 @@ def main():
             print("Could not verify renewal success - please check manually")
             driver.save_screenshot('after_renewal_unknown.png')
 
-        print("Checking new expiry time...")
+        print("Checking new expiration time...")
         expiry_element = wait_and_find_element(
             driver,
             By.XPATH,
             "//div[contains(text(), 'EXPIRED:') or contains(text(), 'Free server')]",
-            description="New Expiry Time Element"
+            description="New Expiration Time Element"
         )
         new_time = expiry_element.text
         print(f"New time text: {new_time}")
@@ -336,17 +325,17 @@ def main():
                 new_datetime = parser.parse(new_time)
                 if new_datetime > initial_datetime:
                     print("Renewal successful! Time has been extended.")
-                    print(f"New expiry time: {new_time}")
+                    print(f"New expiration time: {new_time}")
                     update_last_renew_time(True, new_time)
                 else:
                     print("Renewal may have failed. Time was not extended.")
-                    update_last_renew_time(False, error_message="时间未延长")
+                    update_last_renew_time(False, error_message="Time was not extended")
             except Exception as e:
                 print(f"Error parsing dates: {str(e)}")
-                update_last_renew_time(False, error_message=f"日期解析错误: {str(e)}")
+                update_last_renew_time(False, error_message=f"Date parsing error: {str(e)}")
         else:
-            print("Could not find expiry time in expected format")
-            update_last_renew_time(False, error_message="无法找到到期时间")
+            print("Could not find expiration time in expected format")
+            update_last_renew_time(False, error_message="Could not find expiration time")
 
     except TimeoutException as e:
         error_msg = f"Timeout error: {str(e)}"
