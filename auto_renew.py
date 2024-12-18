@@ -99,7 +99,18 @@ def update_last_renew_time(success, new_time=None, error_message=None):
         f.write(content)
 
 def get_expiration_time(driver):
+    print(f"Current URL: {driver.current_url}")
+    print(f"Page Title: {driver.title}")
+
+    try:
+        page_text = driver.find_element(By.TAG_NAME, 'body').text
+        print("Full page text:\n" + page_text)
+    except Exception as e:
+        print(f"Error getting page text: {e}")
+
     expiry_selectors = [
+        ("xpath", "//div[contains(@class, 'RenewBox___StyledP-sc-1inh2rq-4')]"),
+        ("css", ".RenewBox___StyledP-sc-1inh2rq-4"),
         ("xpath", "//div[contains(text(), 'Expired')]"),
         ("xpath", "//div[contains(text(), 'EXPIRED:')]"),
         ("xpath", "//div[contains(@class, 'expiry')]"),
@@ -108,16 +119,31 @@ def get_expiration_time(driver):
         ("xpath", "//div[contains(text(), 'Free server')]")
     ]
     
+    print("Attempting to find expiration time elements...")
     for selector_type, selector in expiry_selectors:
         try:
-            element = WebDriverWait(driver, 10).until(
-                EC.presence_of_element_located((selector_type, selector))
-            )
-            expiry_text = element.text
-            print(f"Found expiration time: {expiry_text}")
-            return expiry_text
+            if selector_type == "xpath":
+                elements = driver.find_elements(By.XPATH, selector)
+            else:
+                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+            
+            if elements:
+                print(f"Found {len(elements)} elements with selector: {selector}")
+                for idx, element in enumerate(elements, 1):
+                    print(f"Element {idx} details:")
+                    print(f"  Text: {element.text}")
+                    print(f"  Tag Name: {element.tag_name}")
+                    print(f"  Class: {element.get_attribute('class')}")
+                    print(f"  ID: {element.get_attribute('id')}")
+            else:
+                print(f"No elements found with selector: {selector}")
         except Exception as e:
-            print(f"Failed to find with selector {selector}: {e}")
+            print(f"Error with selector {selector}: {e}")
+    
+    try:
+        print("\nPage source:\n" + driver.page_source)
+    except Exception as e:
+        print(f"Error getting page source: {e}")
     
     print("Could not find expiration time with any selector")
     return None
