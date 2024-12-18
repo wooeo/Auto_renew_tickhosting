@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')   # 此处单引号里添加名为pterodactyl_session的cookie或在settings-actons里设置secrets环境变量
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '') 
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -99,54 +99,24 @@ def update_last_renew_time(success, new_time=None, error_message=None):
         f.write(content)
 
 def get_expiration_time(driver):
-    print(f"Current URL: {driver.current_url}")
-    print(f"Page Title: {driver.title}")
-
     try:
-        page_text = driver.find_element(By.TAG_NAME, 'body').text
-        print("Full page text:\n" + page_text)
-    except Exception as e:
-        print(f"Error getting page text: {e}")
-
-    expiry_selectors = [
-        ("xpath", "//div[contains(@class, 'RenewBox___StyledP-sc-1inh2rq-4')]"),
-        ("css", ".RenewBox___StyledP-sc-1inh2rq-4"),
-        ("xpath", "//div[contains(text(), 'Expired')]"),
-        ("xpath", "//div[contains(text(), 'EXPIRED:')]"),
-        ("xpath", "//div[contains(@class, 'expiry')]"),
-        ("xpath", "//div[contains(@class, 'server-details')]//div[contains(text(), 'Expires')]"),
-        ("xpath", "//span[contains(text(), 'Expires')]"),
-        ("xpath", "//div[contains(text(), 'Free server')]")
-    ]
-    
-    print("Attempting to find expiration time elements...")
-    for selector_type, selector in expiry_selectors:
-        try:
-            if selector_type == "xpath":
-                elements = driver.find_elements(By.XPATH, selector)
-            else:
-                elements = driver.find_elements(By.CSS_SELECTOR, selector)
+        elements = driver.find_elements(By.CSS_SELECTOR, ".RenewBox___StyledP-sc-1inh2rq-4")
+        
+        if elements:
+            expiry_text = elements[0].text
+            print(f"Found expiration time: {expiry_text}")
             
-            if elements:
-                print(f"Found {len(elements)} elements with selector: {selector}")
-                for idx, element in enumerate(elements, 1):
-                    print(f"Element {idx} details:")
-                    print(f"  Text: {element.text}")
-                    print(f"  Tag Name: {element.tag_name}")
-                    print(f"  Class: {element.get_attribute('class')}")
-                    print(f"  ID: {element.get_attribute('id')}")
-            else:
-                print(f"No elements found with selector: {selector}")
-        except Exception as e:
-            print(f"Error with selector {selector}: {e}")
+            if expiry_text.startswith("EXPIRED: "):
+                expiry_text = expiry_text.replace("EXPIRED: ", "").strip()
+            
+            return expiry_text
+        else:
+            print("No expiration time elements found")
+            return None
     
-    try:
-        print("\nPage source:\n" + driver.page_source)
     except Exception as e:
-        print(f"Error getting page source: {e}")
-    
-    print("Could not find expiration time with any selector")
-    return None
+        print(f"Error finding expiration time: {e}")
+        return None
 
 def main():
     driver = None
