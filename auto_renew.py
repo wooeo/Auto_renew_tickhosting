@@ -8,7 +8,7 @@ import time
 from dateutil import parser
 import os
 
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')   # 此处单引号里添加名为pterodactyl_session的cookie或在settings-actons里设置secrets环境变量
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')  
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -191,12 +191,23 @@ def main():
         print("Clicking server element...")
         driver.execute_script("arguments[0].click();", server_element)
         
-        # Increase wait time to ensure page is fully loaded
+        # Wait for server page to load completely
         print("Waiting for server page to load completely...")
-        time.sleep(15)  # Increase to 15 seconds
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.TAG_NAME, "body"))
+        )
+
+        # Print current URL immediately after page load
+        print(f"Server page URL after load: {driver.current_url}")
+        
+        # Print page title for additional verification
+        print(f"Server page title: {driver.title}")
 
         print("Taking screenshot of server page...")
         driver.save_screenshot('debug_server_page.png')
+
+        # Additional logging to ensure URL is captured
+        print(f"Confirmed server page URL: {driver.current_url}")
 
         # Commented out button printing
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
