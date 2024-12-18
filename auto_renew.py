@@ -264,9 +264,9 @@ def main():
         renew_button.click()
 
         # Wait for page to update
-        time.sleep(10)  # Increased wait time
+        time.sleep(70)  # Increased wait time
         driver.refresh()
-        time.sleep(5)  # Additional wait after refresh
+        time.sleep(8)  # Additional wait after refresh
 
         # Get new expiration time
         new_time = get_expiration_time(driver)
