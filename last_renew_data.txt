@@ -1,3 +1,4 @@
-Last renewal time: 2024-12-18 17:16:42
-Status: Failed
-Error message: Time not extended
+Server ID: 4420b037
+Renew status: Failed
+Last renewal time: 2024-12-19 03:54:35
+Error: Time not extended
