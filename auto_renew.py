@@ -7,8 +7,12 @@ from datetime import datetime
 import time
 from dateutil import parser
 import os
+import requests
+import re
 
 SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')  
+TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
+TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -86,17 +90,48 @@ def wait_and_find_element(driver, by, value, timeout=20, description=""):
         driver.save_screenshot(f'debug_{description.lower().replace(" ", "_")}.png')
         raise
 
-def update_last_renew_time(success, new_time=None, error_message=None):
+def send_telegram_message(message):
+    if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
+        print("Telegram bot token or chat ID not configured. Skipping Telegram notification.")
+        return False
+    
+    url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+    
+    payload = {
+        "chat_id": TELEGRAM_CHAT_ID,
+        "text": message
+    }
+    
+    try:
+        response = requests.post(url, json=payload)
+        response.raise_for_status()  
+        print("Telegram notification sent successfully.")
+        return True
+    except Exception as e:
+        print(f"Failed to send Telegram notification: {e}")
+        return False
+
+def update_last_renew_time(success, new_time=None, error_message=None, server_id=None):
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    
     status = "Success" if success else "Failed"
-    content = f"Last renewal time: {current_time}\nStatus: {status}"
-    if new_time:
-        content += f"\nNew expiration time: {new_time}"
-    if error_message:
-        content += f"\nError message: {error_message}"
+    
+    content = f"Server ID: {server_id or 'Unknown'}\n"
+    content += f"Renew status: {status}\n"
+    content += f"Last renewal time: {current_time}\n"
+    
+    # if rennew successfuul，add new expiration time
+    if success and new_time:
+        content += f"New expiration time: {new_time}"
+    elif not success and error_message:
+        content += f"Error: {error_message}"
     
     with open('last_renew_data.txt', 'w', encoding='utf-8') as f:
         f.write(content)
+    
+    # send Telegram notification
+    telegram_message = f"**Tickhosting Server Renewal Notification**\n{content}"
+    send_telegram_message(telegram_message)
 
 def get_expiration_time(driver):
     try:
@@ -209,19 +244,57 @@ def main():
         # Additional logging to ensure URL is captured
         print(f"Confirmed server page URL: {driver.current_url}")
 
-        # Commented out button printing
+        # 打印完整的页面源代码
+        print("\nFull Page Source (first 10000 characters):")
+        print(driver.page_source[:10000])
+        
+        # 打印所有按钮的详细信息
         all_buttons = driver.find_elements(By.TAG_NAME, "button")
+        print(f"\nTotal buttons found: {len(all_buttons)}")
+        for idx, button in enumerate(all_buttons, 1):
+            try:
+                print(f"Button {idx}:")
+                print(f"  Text: '{button.text}'")
+                print(f"  Visible: {button.is_displayed()}")
+                print(f"  Enabled: {button.is_enabled()}")
+                print(f"  Class: '{button.get_attribute('class')}'")
+                print(f"  Outer HTML: '{button.get_attribute('outerHTML')}'")
+                print("---")
+            except Exception as e:
+                print(f"Error processing button {idx}: {e}")
+        
+        # 打印所有 span 元素
+        all_spans = driver.find_elements(By.TAG_NAME, "span")
+        print(f"\nTotal spans found: {len(all_spans)}")
+        for idx, span in enumerate(all_spans, 1):
+            try:
+                print(f"Span {idx}:")
+                print(f"  Text: '{span.text}'")
+                print(f"  Class: '{span.get_attribute('class')}'")
+                print(f"  Outer HTML: '{span.get_attribute('outerHTML')}'")
+                print("---")
+            except Exception as e:
+                print(f"Error processing span {idx}: {e}")
+        
+        # 获取服务器ID
+        try:
+            current_url = driver.current_url
+            print(f"\nCurrent URL: {current_url}")
+            
+            server_id_match = re.search(r'/server/([a-f0-9]+)', current_url)
+            server_id = server_id_match.group(1) if server_id_match else 'Unknown'
+            
+            print(f"Extracted Server ID: {server_id}")
+        except Exception as e:
+            print(f"Error extracting server ID: {e}")
+            server_id = 'Unknown'
 
-        print("\nLooking for renew button...")
         renew_selectors = [
-            # Match class name exactly
+            ("xpath", "//span[contains(@class, 'Button___StyledSpan-sc-1qu1gou-2')]/parent::button"),
             ("css", "button.Button__ButtonStyle-sc-1qu1gou-0.beoWBB.RenewBox___StyledButton-sc-1inh2rq-7.hMqrbU"),
-            # Match class name partially
             ("xpath", "//button[contains(@class, 'Button__ButtonStyle-sc-1qu1gou-0') and contains(@class, 'RenewBox___StyledButton')]"),
-            # Match text content
             ("xpath", "//button[.//span[text()='ADD 96 HOUR(S)']]"),
             ("xpath", "//button[.//span[contains(text(), 'ADD 96 HOUR')]]"),
-            # Match color attribute
             ("xpath", "//button[@color='primary' and contains(@class, 'Button__ButtonStyle')]")
         ]
 
@@ -268,29 +341,43 @@ def main():
         driver.refresh()
         time.sleep(8)  # Additional wait after refresh
 
-        # Get new expiration time
-        new_time = get_expiration_time(driver)
+        new_expiration_time = get_expiration_time(driver)
 
-        # Compare times
-        if initial_time and new_time:
+        if initial_time and new_expiration_time:
             try:
                 initial_datetime = parser.parse(initial_time)
-                new_datetime = parser.parse(new_time)
+                new_datetime = parser.parse(new_expiration_time)
                 
                 if new_datetime > initial_datetime:
                     print("Renewal successful! Time has been extended.")
                     print(f"Initial time: {initial_time}")
-                    print(f"New time: {new_time}")
-                    update_last_renew_time(True, new_time)
+                    print(f"New time: {new_expiration_time}")
+                    update_last_renew_time(
+                        success=True, 
+                        new_time=new_expiration_time, 
+                        server_id=server_id
+                    )
                 else:
                     print("Renewal may have failed. Time was not extended.")
-                    update_last_renew_time(False, error_message="Time not extended")
+                    update_last_renew_time(
+                        success=False, 
+                        error_message="Time not extended",
+                        server_id=server_id
+                    )
             except Exception as e:
                 print(f"Error parsing dates: {str(e)}")
-                update_last_renew_time(False, error_message=f"Date parsing error: {str(e)}")
+                update_last_renew_time(
+                    success=False, 
+                    error_message=f"Date parsing error: {str(e)}",
+                    server_id=server_id
+                )
         else:
             print("Could not verify renewal - unable to get expiration times")
-            update_last_renew_time(False, error_message="Could not find expiration times")
+            update_last_renew_time(
+                success=False, 
+                error_message="Could not find expiration times",
+                server_id=server_id
+            )
 
     except TimeoutException as e:
         error_msg = f"Timeout error: {str(e)}"
