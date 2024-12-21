@@ -10,7 +10,13 @@ import os
 import requests
 import re
 
-SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '')  
+# 此处单引号里添加名为pterodactyl_session的cookie或在settings-actons里设置secrets环境变量,建议在secrets中设置环境变量
+# 从环境变量读取登录凭据,账号密码作为备用方案 
+EMAIL = os.getenv('EMAIL', '')        // 登录邮箱
+PASSWORD = os.getenv('PASSWORD', '')  // 登录密码
+SESSION_COOKIE = os.getenv('PTERODACTYL_SESSION', '') 
+
+# Telegram Bot 通知配置（可选）
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
 
@@ -52,6 +58,71 @@ def add_cookies(driver):
     
     print("Current cookies after adding:", driver.get_cookies())
 
+def login_to_dashboard(driver):
+    # try cookie login frist
+    try:
+        print("Attempting to login with cookies...")
+        driver.get("https://tickhosting.com")
+        time.sleep(5)
+        
+        print("Adding cookies...")
+        add_cookies(driver)
+        
+        print("Refreshing page after adding cookies...")
+        driver.refresh()
+        time.sleep(5)
+        
+        # check if it's dashboard
+        if 'dashboard' in driver.current_url.lower():
+            print("Cookie login successful!")
+            return True
+        
+        print("Cookie login failed to reach dashboard.")
+    except Exception as e:
+        print(f"Cookie login error: {str(e)}")
+    
+    # if use cookie login faild，try email to login
+    try:
+        # check EMAIL and POSSWORD
+        if not EMAIL or not PASSWORD:
+            raise ValueError("Email or password not set in environment variables")
+        
+        print("Attempting to login with email and password...")
+        # 导航到登录页面
+        driver.get('https://tickhosting.com/login')
+        
+        # 等待登录表单加载
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, 'email'))
+        )
+        
+        email_input = driver.find_element(By.NAME, 'email')
+        password_input = driver.find_element(By.NAME, 'password')
+        
+        # 输入凭据
+        email_input.clear()
+        email_input.send_keys(EMAIL)
+        password_input.clear()
+        password_input.send_keys(PASSWORD)
+        
+        # 定位并点击登录按钮
+        login_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Login') or contains(text(), '登录')]")
+        login_button.click()
+        
+        # 等待登录完成
+        WebDriverWait(driver, 10).until(
+            EC.url_contains('dashboard')
+        )
+        
+        print("Email/password login successful!")
+        return True
+    
+    except Exception as e:
+        print(f"Login failed: {str(e)}")
+        # 发送 Telegram 通知
+        send_telegram_message(f"Auto Renew Login Error: {str(e)}")
+        return False
+
 def try_login(driver):
     try:
         print("\nAttempting to navigate to dashboard...")
@@ -71,6 +142,45 @@ def try_login(driver):
         
     except Exception as e:
         print(f"Error during login attempt: {str(e)}")
+        return False
+
+def login_with_credentials(driver):
+    """
+    使用邮箱和密码登录
+    """
+    try:
+        # 导航到登录页面
+        driver.get('https://tickhosting.com/login')
+        
+        # 等待登录表单加载
+        WebDriverWait(driver, 10).until(
+            EC.presence_of_element_located((By.NAME, 'email'))
+        )
+        
+        # 定位邮箱和密码输入框
+        email_input = driver.find_element(By.NAME, 'email')
+        password_input = driver.find_element(By.NAME, 'password')
+        
+        # 输入凭据
+        email_input.clear()
+        email_input.send_keys(EMAIL)
+        password_input.clear()
+        password_input.send_keys(PASSWORD)
+        
+        # 定位并点击登录按钮
+        login_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Login') or contains(text(), '登录')]")
+        login_button.click()
+        
+        # 等待登录完成
+        WebDriverWait(driver, 10).until(
+            EC.url_contains('dashboard')
+        )
+        
+        print("Login successful!")
+        return True
+    
+    except Exception as e:
+        print(f"Login failed: {str(e)}")
         return False
 
 def wait_and_find_element(driver, by, value, timeout=20, description=""):
@@ -164,10 +274,11 @@ def main():
         driver.get("https://tickhosting.com")
         time.sleep(5)
         
-        print("Adding cookies...")
-        add_cookies(driver)
-
-        print("Refreshing page after adding cookies...")
+        # 尝试登录到仪表盘
+        if not login_to_dashboard(driver):
+            raise Exception("Unable to login to dashboard")
+        
+        print("Refreshing page after login...")
         driver.refresh()
         time.sleep(5)  # Give more time for the page to load
 
