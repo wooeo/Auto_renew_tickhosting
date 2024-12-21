@@ -84,8 +84,8 @@ def login_to_dashboard(driver):
                 print(f"Current URL after navigation: {driver.current_url}")
                 print(f"Current page title: {driver.title}")
                 
-                # 检查是否成功到达仪表盘
-                if driver.current_url == 'https://tickhosting.com' and 'Dashboard' in driver.title:
+                # 更灵活的登录验证
+                if driver.current_url.startswith('https://tickhosting.com') and 'Dashboard' in driver.title:
                     print("Cookie login successful!")
                     return True
             except Exception as e:
@@ -110,36 +110,21 @@ def login_to_dashboard(driver):
         
         # 尝试多种选择器查找邮箱和密码输入框
         email_selectors = [
+            (By.NAME, 'username'),  # 根据之前的日志，这个选择器成功
             (By.ID, 'email'),
             (By.NAME, 'email'),
-            (By.NAME, 'username'),
             (By.XPATH, "//input[@type='email']"),
-            (By.XPATH, "//input[@name='email']"),
-            (By.CSS_SELECTOR, "input[type='email']"),
-            (By.CSS_SELECTOR, "input.Input-sc-19rce1w-0"),
-            (By.XPATH, "//div[contains(@class, 'LoginFormContainer')]//input[@type='text']"),
-            (By.XPATH, "//div[contains(@class, 'login-form')]//input[@type='text']")
         ]
         
         password_selectors = [
+            (By.NAME, 'password'),  # 根据之前的日志，这个选择器成功
             (By.ID, 'password'),
-            (By.NAME, 'password'),
             (By.XPATH, "//input[@type='password']"),
-            (By.CSS_SELECTOR, "input[type='password']"),
-            (By.CSS_SELECTOR, "input.Input-sc-19rce1w-0"),
-            (By.XPATH, "//div[contains(@class, 'LoginFormContainer')]//input[@type='password']"),
-            (By.XPATH, "//div[contains(@class, 'login-form')]//input[@type='password']")
         ]
         
-        # 尝试查找登录按钮的选择器
         login_button_selectors = [
             (By.XPATH, "//button[@type='submit']"),
-            (By.XPATH, "//button[contains(text(), 'Login') or contains(text(), '登录')]"),
-            (By.CSS_SELECTOR, "button.login-button"),
-            (By.ID, 'login-button'),
-            (By.XPATH, "//div[contains(@class, 'LoginFormContainer')]//button"),
-            (By.XPATH, "//div[contains(@class, 'login-form')]//button"),
-            (By.CSS_SELECTOR, "button.Button__ButtonStyle-sc-1qu1gou-0")
+            (By.XPATH, "//button[contains(text(), 'Login')]"),
         ]
         
         # 查找邮箱输入框
@@ -191,7 +176,7 @@ def login_to_dashboard(driver):
         login_button.click()
         
         # 等待登录完成
-        time.sleep(10)  # 增加等待时间
+        time.sleep(10)
         
         # 尝试导航到登录后的主页
         dashboard_urls = [
@@ -208,8 +193,8 @@ def login_to_dashboard(driver):
                 print(f"Current URL after email login: {driver.current_url}")
                 print(f"Current page title: {driver.title}")
                 
-                # 检查是否成功到达仪表盘
-                if driver.current_url == 'https://tickhosting.com' and 'Dashboard' in driver.title:
+                # 更灵活的登录验证
+                if driver.current_url.startswith('https://tickhosting.com') and 'Dashboard' in driver.title:
                     print("Email/password login successful!")
                     return True
             except Exception as e:
