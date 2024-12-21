@@ -75,13 +75,28 @@ def login_to_dashboard(driver):
         driver.refresh()
         time.sleep(5)
         
-        # 检查是否成功到达仪表盘
-        print(f"Current URL after cookie login: {driver.current_url}")
-        print(f"Current page title: {driver.title}")
+        # 尝试导航到多个可能的仪表盘页面
+        dashboard_urls = [
+            'https://tickhosting.com/dashboard',
+            'https://tickhosting.com/portal/dashboard',
+            'https://tickhosting.com/portal'
+        ]
         
-        if 'dashboard' in driver.current_url.lower() or 'server' in driver.current_url.lower():
-            print("Cookie login successful!")
-            return True
+        for url in dashboard_urls:
+            try:
+                print(f"Attempting to navigate to: {url}")
+                driver.get(url)
+                time.sleep(5)
+                
+                print(f"Current URL after navigation: {driver.current_url}")
+                print(f"Current page title: {driver.title}")
+                
+                # 检查是否成功到达仪表盘
+                if any(keyword in driver.current_url.lower() for keyword in ['dashboard', 'portal', 'server']):
+                    print("Cookie login successful!")
+                    return True
+            except Exception as e:
+                print(f"Failed to navigate to {url}: {e}")
         
         print("Cookie login failed to reach dashboard.")
     except Exception as e:
@@ -109,33 +124,6 @@ def login_to_dashboard(driver):
             print(f"Error encoding page source: {encode_error}")
             # 如果仍然出错，打印部分内容
             print(driver.page_source[:5000])
-        
-        # 打印所有输入框
-        print("\nAll Input Fields:")
-        input_fields = driver.find_elements(By.TAG_NAME, 'input')
-        for idx, field in enumerate(input_fields, 1):
-            try:
-                print(f"Input {idx}:")
-                print(f"  Type: {field.get_attribute('type')}")
-                print(f"  Name: {field.get_attribute('name') or 'N/A'}")
-                print(f"  ID: {field.get_attribute('id') or 'N/A'}")
-                print(f"  Class: {field.get_attribute('class') or 'N/A'}")
-            except Exception as e:
-                print(f"Error processing input field {idx}: {e}")
-        
-        # 打印所有按钮
-        print("\nAll Buttons:")
-        buttons = driver.find_elements(By.TAG_NAME, 'button')
-        for idx, button in enumerate(buttons, 1):
-            try:
-                print(f"Button {idx}:")
-                print(f"  Text: {button.text or 'N/A'}")
-                print(f"  Type: {button.get_attribute('type') or 'N/A'}")
-                print(f"  Name: {button.get_attribute('name') or 'N/A'}")
-                print(f"  ID: {button.get_attribute('id') or 'N/A'}")
-                print(f"  Class: {button.get_attribute('class') or 'N/A'}")
-            except Exception as e:
-                print(f"Error processing button {idx}: {e}")
         
         # 尝试多种选择器查找邮箱和密码输入框
         email_selectors = [
@@ -171,19 +159,6 @@ def login_to_dashboard(driver):
             (By.CSS_SELECTOR, "button.Button__ButtonStyle-sc-1qu1gou-0")
         ]
         
-        # 打印所有可能的选择器
-        print("\nTrying email selectors:")
-        for selector in email_selectors:
-            print(f"Attempting selector: {selector}")
-        
-        print("\nTrying password selectors:")
-        for selector in password_selectors:
-            print(f"Attempting selector: {selector}")
-        
-        print("\nTrying login button selectors:")
-        for selector in login_button_selectors:
-            print(f"Attempting selector: {selector}")
-        
         # 查找邮箱输入框
         email_input = None
         for selector in email_selectors:
@@ -217,8 +192,8 @@ def login_to_dashboard(driver):
                 password_input = driver.find_element(*selector)
                 print(f"Found password input with selector: {selector}")
                 break
-            except:
-                continue
+            except Exception as e:
+                print(f"Failed to find password input with selector {selector}: {e}")
         
         if not password_input:
             raise Exception("Could not find password input field")
@@ -230,8 +205,8 @@ def login_to_dashboard(driver):
                 login_button = driver.find_element(*selector)
                 print(f"Found login button with selector: {selector}")
                 break
-            except:
-                continue
+            except Exception as e:
+                print(f"Failed to find login button with selector {selector}: {e}")
         
         if not login_button:
             raise Exception("Could not find login button")
@@ -248,13 +223,28 @@ def login_to_dashboard(driver):
         # 等待登录完成
         time.sleep(10)  # 增加等待时间
         
-        # 再次检查 URL 和页面标题
-        print(f"Current URL after email login: {driver.current_url}")
-        print(f"Current page title: {driver.title}")
+        # 尝试导航到多个可能的仪表盘页面
+        dashboard_urls = [
+            'https://tickhosting.com/dashboard',
+            'https://tickhosting.com/portal/dashboard',
+            'https://tickhosting.com/portal'
+        ]
         
-        if 'dashboard' in driver.current_url.lower() or 'server' in driver.current_url.lower():
-            print("Email/password login successful!")
-            return True
+        for url in dashboard_urls:
+            try:
+                print(f"Attempting to navigate to: {url}")
+                driver.get(url)
+                time.sleep(5)
+                
+                # 再次检查 URL 和页面标题
+                print(f"Current URL after email login: {driver.current_url}")
+                print(f"Current page title: {driver.title}")
+                
+                if any(keyword in driver.current_url.lower() for keyword in ['dashboard', 'portal', 'server']):
+                    print("Email/password login successful!")
+                    return True
+            except Exception as e:
+                print(f"Failed to navigate to {url}: {e}")
         
         raise Exception("Login did not reach dashboard")
     
