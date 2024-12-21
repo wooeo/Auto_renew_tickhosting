@@ -98,7 +98,7 @@ def login_to_dashboard(driver):
         driver.get('https://tickhosting.com/auth/login')
         
         # 等待页面加载
-        time.sleep(5)
+        time.sleep(8)
         
         # 打印页面源代码
         print("\nFull Page Source:")
@@ -141,15 +141,23 @@ def login_to_dashboard(driver):
         email_selectors = [
             (By.ID, 'email'),
             (By.NAME, 'email'),
+            (By.NAME, 'username'),
             (By.XPATH, "//input[@type='email']"),
-            (By.CSS_SELECTOR, "input[type='email']")
+            (By.XPATH, "//input[@name='email']"),
+            (By.CSS_SELECTOR, "input[type='email']"),
+            (By.CSS_SELECTOR, "input.Input-sc-19rce1w-0"),
+            (By.XPATH, "//div[contains(@class, 'LoginFormContainer')]//input[@type='text']"),
+            (By.XPATH, "//div[contains(@class, 'login-form')]//input[@type='text']")
         ]
         
         password_selectors = [
             (By.ID, 'password'),
             (By.NAME, 'password'),
             (By.XPATH, "//input[@type='password']"),
-            (By.CSS_SELECTOR, "input[type='password']")
+            (By.CSS_SELECTOR, "input[type='password']"),
+            (By.CSS_SELECTOR, "input.Input-sc-19rce1w-0"),
+            (By.XPATH, "//div[contains(@class, 'LoginFormContainer')]//input[@type='password']"),
+            (By.XPATH, "//div[contains(@class, 'login-form')]//input[@type='password']")
         ]
         
         # 尝试查找登录按钮的选择器
@@ -157,8 +165,24 @@ def login_to_dashboard(driver):
             (By.XPATH, "//button[@type='submit']"),
             (By.XPATH, "//button[contains(text(), 'Login') or contains(text(), '登录')]"),
             (By.CSS_SELECTOR, "button.login-button"),
-            (By.ID, 'login-button')
+            (By.ID, 'login-button'),
+            (By.XPATH, "//div[contains(@class, 'LoginFormContainer')]//button"),
+            (By.XPATH, "//div[contains(@class, 'login-form')]//button"),
+            (By.CSS_SELECTOR, "button.Button__ButtonStyle-sc-1qu1gou-0")
         ]
+        
+        # 打印所有可能的选择器
+        print("\nTrying email selectors:")
+        for selector in email_selectors:
+            print(f"Attempting selector: {selector}")
+        
+        print("\nTrying password selectors:")
+        for selector in password_selectors:
+            print(f"Attempting selector: {selector}")
+        
+        print("\nTrying login button selectors:")
+        for selector in login_button_selectors:
+            print(f"Attempting selector: {selector}")
         
         # 查找邮箱输入框
         email_input = None
@@ -167,10 +191,23 @@ def login_to_dashboard(driver):
                 email_input = driver.find_element(*selector)
                 print(f"Found email input with selector: {selector}")
                 break
-            except:
-                continue
+            except Exception as e:
+                print(f"Failed to find email input with selector {selector}: {e}")
         
         if not email_input:
+            # 尝试打印所有输入框的详细信息
+            print("\nDetailed input field information:")
+            input_fields = driver.find_elements(By.TAG_NAME, 'input')
+            for idx, field in enumerate(input_fields, 1):
+                try:
+                    print(f"Input {idx}:")
+                    print(f"  Type: {field.get_attribute('type')}")
+                    print(f"  Name: {field.get_attribute('name') or 'N/A'}")
+                    print(f"  ID: {field.get_attribute('id') or 'N/A'}")
+                    print(f"  Class: {field.get_attribute('class') or 'N/A'}")
+                except Exception as e:
+                    print(f"Error processing input field {idx}: {e}")
+            
             raise Exception("Could not find email input field")
         
         # 查找密码输入框
