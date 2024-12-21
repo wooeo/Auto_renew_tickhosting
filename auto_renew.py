@@ -58,14 +58,10 @@ def add_cookies(driver):
     print("Current cookies after adding:", driver.get_cookies())
 
 def login_to_dashboard(driver):
-    """
-    尝试登录到仪表盘
-    优先使用 cookie 登录，如果失败则使用邮箱密码登录
-    """
     # 首先尝试使用 cookie 登录
     try:
         print("Attempting to login with cookies...")
-        driver.get("https://tickhosting.com")
+        driver.get("https://tickhosting.com/")
         time.sleep(5)
         
         print("Adding cookies...")
@@ -75,11 +71,8 @@ def login_to_dashboard(driver):
         driver.refresh()
         time.sleep(5)
         
-        # 尝试导航到多个可能的仪表盘页面
         dashboard_urls = [
-            'https://tickhosting.com/dashboard',
-            'https://tickhosting.com/portal/dashboard',
-            'https://tickhosting.com/portal'
+            'https://tickhosting.com'
         ]
         
         for url in dashboard_urls:
@@ -92,7 +85,7 @@ def login_to_dashboard(driver):
                 print(f"Current page title: {driver.title}")
                 
                 # 检查是否成功到达仪表盘
-                if any(keyword in driver.current_url.lower() for keyword in ['dashboard', 'portal', 'server']):
+                if driver.current_url == 'https://tickhosting.com' and 'Dashboard' in driver.title:
                     print("Cookie login successful!")
                     return True
             except Exception as e:
@@ -114,16 +107,6 @@ def login_to_dashboard(driver):
         
         # 等待页面加载
         time.sleep(8)
-        
-        # 打印页面源代码
-        print("\nFull Page Source:")
-        try:
-            # 尝试使用 UTF-8 编码打印
-            print(driver.page_source.encode('utf-8', errors='ignore').decode('utf-8')[:10000])
-        except Exception as encode_error:
-            print(f"Error encoding page source: {encode_error}")
-            # 如果仍然出错，打印部分内容
-            print(driver.page_source[:5000])
         
         # 尝试多种选择器查找邮箱和密码输入框
         email_selectors = [
@@ -170,19 +153,6 @@ def login_to_dashboard(driver):
                 print(f"Failed to find email input with selector {selector}: {e}")
         
         if not email_input:
-            # 尝试打印所有输入框的详细信息
-            print("\nDetailed input field information:")
-            input_fields = driver.find_elements(By.TAG_NAME, 'input')
-            for idx, field in enumerate(input_fields, 1):
-                try:
-                    print(f"Input {idx}:")
-                    print(f"  Type: {field.get_attribute('type')}")
-                    print(f"  Name: {field.get_attribute('name') or 'N/A'}")
-                    print(f"  ID: {field.get_attribute('id') or 'N/A'}")
-                    print(f"  Class: {field.get_attribute('class') or 'N/A'}")
-                except Exception as e:
-                    print(f"Error processing input field {idx}: {e}")
-            
             raise Exception("Could not find email input field")
         
         # 查找密码输入框
@@ -223,11 +193,9 @@ def login_to_dashboard(driver):
         # 等待登录完成
         time.sleep(10)  # 增加等待时间
         
-        # 尝试导航到多个可能的仪表盘页面
+        # 尝试导航到登录后的主页
         dashboard_urls = [
-            'https://tickhosting.com/dashboard',
-            'https://tickhosting.com/portal/dashboard',
-            'https://tickhosting.com/portal'
+            'https://tickhosting.com'
         ]
         
         for url in dashboard_urls:
@@ -240,7 +208,8 @@ def login_to_dashboard(driver):
                 print(f"Current URL after email login: {driver.current_url}")
                 print(f"Current page title: {driver.title}")
                 
-                if any(keyword in driver.current_url.lower() for keyword in ['dashboard', 'portal', 'server']):
+                # 检查是否成功到达仪表盘
+                if driver.current_url == 'https://tickhosting.com' and 'Dashboard' in driver.title:
                     print("Email/password login successful!")
                     return True
             except Exception as e:
