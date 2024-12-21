@@ -89,15 +89,16 @@ def login_to_dashboard(driver):
         
         print("Attempting to login with email and password...")
         # 导航到登录页面
-        driver.get('https://tickhosting.com/login')
+        driver.get('https://tickhosting.com/auth/login')
         
         # 等待登录表单加载
         WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.NAME, 'email'))
+            EC.presence_of_element_located((By.ID, 'email'))
         )
         
-        email_input = driver.find_element(By.NAME, 'email')
-        password_input = driver.find_element(By.NAME, 'password')
+        # 定位邮箱和密码输入框
+        email_input = driver.find_element(By.ID, 'email')
+        password_input = driver.find_element(By.ID, 'password')
         
         # 输入凭据
         email_input.clear()
@@ -106,7 +107,7 @@ def login_to_dashboard(driver):
         password_input.send_keys(PASSWORD)
         
         # 定位并点击登录按钮
-        login_button = driver.find_element(By.XPATH, "//button[contains(text(), 'Login') or contains(text(), '登录')]")
+        login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
         login_button.click()
         
         # 等待登录完成
