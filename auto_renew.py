@@ -102,28 +102,40 @@ def login_to_dashboard(driver):
         
         # 打印页面源代码
         print("\nFull Page Source:")
-        print(driver.page_source)
+        try:
+            # 尝试使用 UTF-8 编码打印
+            print(driver.page_source.encode('utf-8', errors='ignore').decode('utf-8')[:10000])
+        except Exception as encode_error:
+            print(f"Error encoding page source: {encode_error}")
+            # 如果仍然出错，打印部分内容
+            print(driver.page_source[:5000])
         
         # 打印所有输入框
         print("\nAll Input Fields:")
         input_fields = driver.find_elements(By.TAG_NAME, 'input')
         for idx, field in enumerate(input_fields, 1):
-            print(f"Input {idx}:")
-            print(f"  Type: {field.get_attribute('type')}")
-            print(f"  Name: {field.get_attribute('name')}")
-            print(f"  ID: {field.get_attribute('id')}")
-            print(f"  Class: {field.get_attribute('class')}")
+            try:
+                print(f"Input {idx}:")
+                print(f"  Type: {field.get_attribute('type')}")
+                print(f"  Name: {field.get_attribute('name') or 'N/A'}")
+                print(f"  ID: {field.get_attribute('id') or 'N/A'}")
+                print(f"  Class: {field.get_attribute('class') or 'N/A'}")
+            except Exception as e:
+                print(f"Error processing input field {idx}: {e}")
         
         # 打印所有按钮
         print("\nAll Buttons:")
         buttons = driver.find_elements(By.TAG_NAME, 'button')
         for idx, button in enumerate(buttons, 1):
-            print(f"Button {idx}:")
-            print(f"  Text: {button.text}")
-            print(f"  Type: {button.get_attribute('type')}")
-            print(f"  Name: {button.get_attribute('name')}")
-            print(f"  ID: {button.get_attribute('id')}")
-            print(f"  Class: {button.get_attribute('class')}")
+            try:
+                print(f"Button {idx}:")
+                print(f"  Text: {button.text or 'N/A'}")
+                print(f"  Type: {button.get_attribute('type') or 'N/A'}")
+                print(f"  Name: {button.get_attribute('name') or 'N/A'}")
+                print(f"  ID: {button.get_attribute('id') or 'N/A'}")
+                print(f"  Class: {button.get_attribute('class') or 'N/A'}")
+            except Exception as e:
+                print(f"Error processing button {idx}: {e}")
         
         # 尝试多种选择器查找邮箱和密码输入框
         email_selectors = [
@@ -242,7 +254,7 @@ def login_with_credentials(driver):
     """
     try:
         # 导航到登录页面
-        driver.get('https://tickhosting.com/login')
+        driver.get('https://tickhosting.com/auth/login')
         
         # 等待登录表单加载
         WebDriverWait(driver, 10).until(
