@@ -58,7 +58,11 @@ def add_cookies(driver):
     print("Current cookies after adding:", driver.get_cookies())
 
 def login_to_dashboard(driver):
-    # try cookie login frist
+    """
+    尝试登录到仪表盘
+    优先使用 cookie 登录，如果失败则使用邮箱密码登录
+    """
+    # 首先尝试使用 cookie 登录
     try:
         print("Attempting to login with cookies...")
         driver.get("https://tickhosting.com")
@@ -71,8 +75,11 @@ def login_to_dashboard(driver):
         driver.refresh()
         time.sleep(5)
         
-        # check if it's dashboard
-        if 'dashboard' in driver.current_url.lower():
+        # 检查是否成功到达仪表盘
+        print(f"Current URL after cookie login: {driver.current_url}")
+        print(f"Current page title: {driver.title}")
+        
+        if 'dashboard' in driver.current_url.lower() or 'server' in driver.current_url.lower():
             print("Cookie login successful!")
             return True
         
@@ -80,9 +87,9 @@ def login_to_dashboard(driver):
     except Exception as e:
         print(f"Cookie login error: {str(e)}")
     
-    # if use cookie login faild，try email to login
+    # 如果 cookie 登录失败，尝试邮箱密码登录
     try:
-        # check EMAIL and POSSWORD
+        # 检查是否提供了登录凭据
         if not EMAIL or not PASSWORD:
             raise ValueError("Email or password not set in environment variables")
         
@@ -90,14 +97,95 @@ def login_to_dashboard(driver):
         # 导航到登录页面
         driver.get('https://tickhosting.com/auth/login')
         
-        # 等待登录表单加载
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, 'email'))
-        )
+        # 等待页面加载
+        time.sleep(5)
         
-        # 定位邮箱和密码输入框
-        email_input = driver.find_element(By.ID, 'email')
-        password_input = driver.find_element(By.ID, 'password')
+        # 打印页面源代码
+        print("\nFull Page Source:")
+        print(driver.page_source)
+        
+        # 打印所有输入框
+        print("\nAll Input Fields:")
+        input_fields = driver.find_elements(By.TAG_NAME, 'input')
+        for idx, field in enumerate(input_fields, 1):
+            print(f"Input {idx}:")
+            print(f"  Type: {field.get_attribute('type')}")
+            print(f"  Name: {field.get_attribute('name')}")
+            print(f"  ID: {field.get_attribute('id')}")
+            print(f"  Class: {field.get_attribute('class')}")
+        
+        # 打印所有按钮
+        print("\nAll Buttons:")
+        buttons = driver.find_elements(By.TAG_NAME, 'button')
+        for idx, button in enumerate(buttons, 1):
+            print(f"Button {idx}:")
+            print(f"  Text: {button.text}")
+            print(f"  Type: {button.get_attribute('type')}")
+            print(f"  Name: {button.get_attribute('name')}")
+            print(f"  ID: {button.get_attribute('id')}")
+            print(f"  Class: {button.get_attribute('class')}")
+        
+        # 尝试多种选择器查找邮箱和密码输入框
+        email_selectors = [
+            (By.ID, 'email'),
+            (By.NAME, 'email'),
+            (By.XPATH, "//input[@type='email']"),
+            (By.CSS_SELECTOR, "input[type='email']")
+        ]
+        
+        password_selectors = [
+            (By.ID, 'password'),
+            (By.NAME, 'password'),
+            (By.XPATH, "//input[@type='password']"),
+            (By.CSS_SELECTOR, "input[type='password']")
+        ]
+        
+        # 尝试查找登录按钮的选择器
+        login_button_selectors = [
+            (By.XPATH, "//button[@type='submit']"),
+            (By.XPATH, "//button[contains(text(), 'Login') or contains(text(), '登录')]"),
+            (By.CSS_SELECTOR, "button.login-button"),
+            (By.ID, 'login-button')
+        ]
+        
+        # 查找邮箱输入框
+        email_input = None
+        for selector in email_selectors:
+            try:
+                email_input = driver.find_element(*selector)
+                print(f"Found email input with selector: {selector}")
+                break
+            except:
+                continue
+        
+        if not email_input:
+            raise Exception("Could not find email input field")
+        
+        # 查找密码输入框
+        password_input = None
+        for selector in password_selectors:
+            try:
+                password_input = driver.find_element(*selector)
+                print(f"Found password input with selector: {selector}")
+                break
+            except:
+                continue
+        
+        if not password_input:
+            raise Exception("Could not find password input field")
+        
+        # 查找登录按钮
+        login_button = None
+        for selector in login_button_selectors:
+            try:
+                login_button = driver.find_element(*selector)
+                print(f"Found login button with selector: {selector}")
+                break
+            except:
+                continue
+        
+        if not login_button:
+            raise Exception("Could not find login button")
         
         # 输入凭据
         email_input.clear()
@@ -105,17 +193,21 @@ def login_to_dashboard(driver):
         password_input.clear()
         password_input.send_keys(PASSWORD)
         
-        # 定位并点击登录按钮
-        login_button = driver.find_element(By.XPATH, "//button[@type='submit']")
+        # 点击登录按钮
         login_button.click()
         
         # 等待登录完成
-        WebDriverWait(driver, 10).until(
-            EC.url_contains('dashboard')
-        )
+        time.sleep(10)  # 增加等待时间
         
-        print("Email/password login successful!")
-        return True
+        # 再次检查 URL 和页面标题
+        print(f"Current URL after email login: {driver.current_url}")
+        print(f"Current page title: {driver.title}")
+        
+        if 'dashboard' in driver.current_url.lower() or 'server' in driver.current_url.lower():
+            print("Email/password login successful!")
+            return True
+        
+        raise Exception("Login did not reach dashboard")
     
     except Exception as e:
         print(f"Login failed: {str(e)}")
