@@ -1,4 +1,4 @@
 Server ID: 4420b037
-Renew status: Success
-Last renewal time: 2024-12-25 00:54:59
-New expiration time: 2025-01-07 14:16:23
+Renew status: Failed
+Last renewal time: 2024-12-29 01:00:46
+Error: Time not extended
